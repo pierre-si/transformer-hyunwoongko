@@ -74,3 +74,31 @@ class MultiHeadAttention(nn.Module):
 
         return tensor.view(batch_size, length, d_model)
 
+class ScaleDotProductAttention(nn.Module):
+    """computes scale dot product attention
+    Query: vector to compare to every other vector to establish the weights for its own output
+    Key: vector to compare to the query to establish the weights for the query's output
+    Value: vector used as part of the weighted sum to compute the output vector
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, q, k, v, mask=None, e=1e-12):
+        """q, k, v: [batch_size, head, length, d_model/n_head]
+        """
+        batch_size, head, length, d_tensor = q.size()
+
+        k_t = k.view(batch_size, head, d_tensor, length)
+        # batched matrix multiply
+        score = (q @ k_t) / math.sqrt(d_tensor)
+
+        if mask is not None:
+            # fills element of tensor where mask is True with -e
+            score = score.masked_fill(mask == 0, -e)
+        
+        score = self.softmax(score)
+
+        v = score @ v
+
+        return v, score
