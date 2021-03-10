@@ -102,3 +102,38 @@ class ScaleDotProductAttention(nn.Module):
         v = score @ v
 
         return v, score
+
+class LayerNorm(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # added to the list of parameters
+        # can't find these scaling parameters in the transformer paper
+        self.gamma = nn.Parameter(torch.ones(d_model))
+        self.beta = nn.Parameter(torch.zeros(d_model))
+        self.eps = eps
+
+    def forward(x):
+        # -1: on the last dimension only
+        mean = x.mean(-1, keepdim=True)
+        std = x.std(-1, keepdim=True)
+
+        out = (x - mean) / (std + self.eps)
+        out = self.gamma * out + self.beta
+        return out  
+
+# position wise : applied to each position (length dim) separately and identically.
+class PositionWiseFeedForward(nn.Module):
+    def __init__(self, d_model, hidden=2048, drop_prob=0.1):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, hidden)
+        self.linear2 = nn.Linear(hidden, d_model)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=drop_prob)
+
+    def forward(self, x):
+        x = self.linear1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.linear2(x)
+        return x
+
