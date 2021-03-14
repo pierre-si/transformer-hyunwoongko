@@ -19,6 +19,7 @@ drop_prob = 0.1
 
 # optimizer parameter setting
 init_lr = 1e-5
+min_lr = 1e-9
 factor = 0.9
 adam_eps = 5e-9
 patience = 10
