@@ -199,3 +199,68 @@ class Encoder(nn.Module):
             x = layer(x, src_mask)
         
         return x
+
+class DecoderLayer(nn.Module):
+    def __init__(self, d_model, ffn_hidden, n_head, drop_prob):
+        super().__init__()
+        self.self_attention = MultiHeadAttention(d_model, n_head)
+        self.norm1 = LayerNorm(d_model)
+        self.dropout1 = nn.Dropout(drop_prob)
+
+        self.enc_dec_attention = MultiHeadAttention(d_model, n_head)
+        self.norm2 = LayerNorm(d_model)
+        self.dropout2 = nn.Dropout(drop_prob)
+
+        self.ffn = PositionWiseFeedForward(d_model, ffn_hidden, drop_prob)
+        self.norm3 = LayerNorm(d_model)
+        self.dropout3 = nn.Dropout(drop_prob)
+
+    def forward(self, dec, enc, trg_mask, src_mask):
+        _x = dec
+        x = self.self_attention(q=dec, k=dec, v=dec, mask=trg_mask)
+
+        x = self.dropout1(x)
+        x = self.norm1(x + _x)
+
+        if enc is not None:
+            _x = x
+            x = self.enc_dec_attention(q=x, k=enc, v=enc, mask=src_mask)
+
+            x = self.dropout2(x)
+            x = self.norm2(x + _x)
+        
+        _x = x
+        x.self.ffn(x)
+
+        x = self.dropout3(x)
+        x = self.norm3(x + _x)
+        return x
+
+class Decoder(nn.Module):
+    def __init__(self, dec_voc_size, max_len, d_model, ffn_hidden, n_head, n_layers, drop_prob, device):
+        super().__init__()
+        self.emb = TransformerEmbedding(
+            dec_voc_size,
+            d_model,
+            max_len,
+            drop_prob,
+            device
+        )
+
+        self.layers = nn.ModuleList([DecoderLayer(
+            d_model,
+            ffn_hidden,
+            n_head,
+            drop_prob
+        ) for i in range(n_layers)])
+
+        self.linear = nn.Linear(d_model, dec_voc_size)
+
+    def forward(self, trg, src, trg_mask, src_mask):
+        trg = self.emb(trg)
+
+        for layer in self.layers:
+            trg = layer(trg, src, trg_mask, src_mask)
+        
+        output = self.linear(trg)
+        return output
