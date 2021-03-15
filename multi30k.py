@@ -1,12 +1,15 @@
 #%%
-import time 
+import time, math
 
-from conf import *
-from torchtext.legacy.data import Field, BucketIterator
-from torchtext.legacy.datasets.translation import Multi30k
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import Adam
+from torchtext.legacy.data import Field, BucketIterator
+from torchtext.legacy.datasets.translation import Multi30k
+
+from conf import *
+from lib import Transformer
+from bleu import idx_to_word, get_bleu
 # %%
 class DataLoader:
     source: Field = None
@@ -87,7 +90,6 @@ trg_sos_idx = loader.target.vocab.stoi['<sos>']
 enc_voc_size = len(loader.source.vocab)
 dec_voc_size = len(loader.target.vocab)
 # %%
-from lib import Transformer
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -181,6 +183,13 @@ def evaluate(model, iterator, criterion):
 
     batch_bleu = sum(batch_bleu) / len(batch_bleu)
     return epoch_loss / len(iterator), batch_bleu
+
+# %%
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
 # %%
 def run(total_epoch, best_loss):
     train_losses, test_losses, bleus = [], [], []
@@ -218,8 +227,5 @@ def run(total_epoch, best_loss):
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
         print(f'\tVal Loss: {valid_loss:.3f} |  Val PPL: {math.exp(valid_loss):7.3f}')
         print(f'\tBLEU Score: {bleu:.3f}')
-
-
 # %%
 run(10, inf)
-# %%

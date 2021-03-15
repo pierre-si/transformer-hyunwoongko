@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 
@@ -95,11 +96,12 @@ class ScaleDotProductAttention(nn.Module):
 
     def __init__(self):
         super().__init__()
+        self.softmax = nn.Softmax()
 
     def forward(self, q, k, v, mask=None, e=1e-12):
         """q, k, v: [batch_size, head, length, d_model/n_head]
         """
-        batch_size, head, length, d_tensor = q.size()
+        batch_size, head, length, d_tensor = k.size()
 
         k_t = k.view(batch_size, head, d_tensor, length)
         # batched matrix multiply
@@ -124,7 +126,7 @@ class LayerNorm(nn.Module):
         self.beta = nn.Parameter(torch.zeros(d_model))
         self.eps = eps
 
-    def forward(x):
+    def forward(self, x):
         # -1: on the last dimension only
         mean = x.mean(-1, keepdim=True)
         std = x.std(-1, keepdim=True)
@@ -230,7 +232,7 @@ class DecoderLayer(nn.Module):
             x = self.norm2(x + _x)
         
         _x = x
-        x.self.ffn(x)
+        x = self.ffn(x)
 
         x = self.dropout3(x)
         x = self.norm3(x + _x)
@@ -303,6 +305,6 @@ class Transformer(nn.Module):
     def make_trg_mask(self, trg):
         trg_pad_mask = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(3)
         trg_len = trg.shape[1]
-        trg_sub_mask = torch.tril(torch.ones(trg_len, trg_len)).to(self.device)
+        trg_sub_mask = torch.tril(torch.ones(trg_len, trg_len)).type(torch.BoolTensor).to(self.device)
         trg_mask = trg_pad_mask & trg_sub_mask
         return trg_mask
