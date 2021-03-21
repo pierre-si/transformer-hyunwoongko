@@ -8,7 +8,6 @@ from collections import Counter
 
 import numpy as np
 
-
 def bleu_stats(hypothesis, reference):
     """Compute statistics for BLEU."""
     stats = []
