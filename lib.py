@@ -96,7 +96,7 @@ class ScaleDotProductAttention(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=3)
 
     def forward(self, q, k, v, mask=None, e=1e-12):
         """q, k, v: [batch_size, head, length, d_model/n_head]
@@ -109,6 +109,8 @@ class ScaleDotProductAttention(nn.Module):
 
         if mask is not None:
             # fills element of tensor where mask is True with -e
+            # mask is either batch_size × 1 × 1 × length (src_mask)
+            # or batch_size × 1 × length × length (trg_mask, masked mha)
             score = score.masked_fill(mask == 0, -e)
         
         score = self.softmax(score)
@@ -268,6 +270,7 @@ class Decoder(nn.Module):
         return output
 
 class Transformer(nn.Module):
+    # sos: start of stream, not used by this implementation…
     def __init__(self, src_pad_idx, trg_pad_idx, trg_sos_idx, enc_voc_size, dec_voc_size, d_model, n_head, max_len, ffn_hidden, n_layers, drop_prob, device):
         super().__init__()
         self.src_pad_idx = src_pad_idx
@@ -303,8 +306,11 @@ class Transformer(nn.Module):
         return src_mask
 
     def make_trg_mask(self, trg):
+        # dim: batch_size × 1 × seq_len × 1
         trg_pad_mask = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(3)
         trg_len = trg.shape[1]
+        # dim: seq_len × seq_len
         trg_sub_mask = torch.tril(torch.ones(trg_len, trg_len)).type(torch.BoolTensor).to(self.device)
+        # dim: batch_size × 1 × seq_len × seq_len
         trg_mask = trg_pad_mask & trg_sub_mask
         return trg_mask
