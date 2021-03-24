@@ -6,6 +6,7 @@ import torch.optim as optim
 from torch.optim import Adam
 from torchtext.legacy.data import Field, BucketIterator
 from torchtext.legacy.datasets.translation import Multi30k
+from torch.utils.tensorboard import SummaryWriter
 
 from conf import *
 from lib import Transformer
@@ -100,6 +101,7 @@ def initialize_weights(m):
         nn.init.kaiming_uniform(m.weight.data)
 
 
+#tb = SummaryWriter()
 model = Transformer(src_pad_idx=src_pad_idx,
                     trg_pad_idx=trg_pad_idx,
                     trg_sos_idx=trg_sos_idx,
@@ -112,6 +114,8 @@ model = Transformer(src_pad_idx=src_pad_idx,
                     n_layers=n_layers,
                     drop_prob=drop_prob,
                     device=device).to(device)
+
+#tb.add_graph(model)
 
 print(f'The model has {count_parameters(model):,} trainable parameters')
 model.apply(initialize_weights)
@@ -192,6 +196,7 @@ def epoch_time(start_time, end_time):
     return elapsed_mins, elapsed_secs
 # %%
 def run(total_epoch, best_loss):
+    tb = SummaryWriter()
     train_losses, test_losses, bleus = [], [], []
     for step in range(total_epoch):
         start_time = time.time()
@@ -209,17 +214,17 @@ def run(total_epoch, best_loss):
 
         if valid_loss < best_loss:
             best_loss = valid_loss
-            torch.save(model.state_dict(), 'saved/model-{0}.pt'.format(valid_loss))
+            torch.save(model.state_dict(), 'results/model-{0}.pt'.format(valid_loss))
 
-        f = open('result/train_loss.txt', 'w')
+        f = open('results/train_loss.txt', 'w')
         f.write(str(train_losses))
         f.close()
 
-        f = open('result/bleu.txt', 'w')
+        f = open('results/bleu.txt', 'w')
         f.write(str(bleus))
         f.close()
 
-        f = open('result/test_loss.txt', 'w')
+        f = open('results/test_loss.txt', 'w')
         f.write(str(test_losses))
         f.close()
 
@@ -227,5 +232,13 @@ def run(total_epoch, best_loss):
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
         print(f'\tVal Loss: {valid_loss:.3f} |  Val PPL: {math.exp(valid_loss):7.3f}')
         print(f'\tBLEU Score: {bleu:.3f}')
+        tb.add_scalar("Train Loss", train_loss, step)
+        tb.add_scalar("Val Loss", valid_loss, step)
+        tb.add_scalar("BLEU", bleu, step)
+        for name, weight in model.named_parameters():
+            tb.add_histogram(name,weight, epoch)
+            tb.add_histogram(f'{name}.grad',weight.grad, epoch)
+    tb.close()
 # %%
-run(10, inf)
+run(100, inf)
+# %%
