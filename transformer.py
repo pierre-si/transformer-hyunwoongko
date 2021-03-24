@@ -107,12 +107,15 @@ class ScaleDotProductAttention(nn.Module):
         # batched matrix multiply
         score = (q @ k_t) / math.sqrt(d_tensor)
 
+        #print("score shape:", score.shape)
+        #print("mask shape:", mask.shape)
         if mask is not None:
             # fills element of tensor where mask is True with -e
             # mask is either batch_size × 1 × 1 × length (src_mask)
             # or batch_size × 1 × length × length (trg_mask, masked mha)
             score = score.masked_fill(mask == 0, -e)
         
+        #print(score.shape)
         score = self.softmax(score)
 
         v = score @ v
