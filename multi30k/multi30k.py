@@ -1,5 +1,10 @@
 #%%
-import time, math
+import sys, os, time, math
+
+# Add utility_scripts in the current path so that they can be imported directly just like in interactive mode
+sys.path.append(os.path.abspath("../usr/lib/"))
+for script_folder in os.listdir("../usr/lib/"):
+    sys.path.append(os.path.abspath("../usr/lib/"+script_folder))
 
 import torch.nn as nn
 import torch.optim as optim
@@ -8,9 +13,25 @@ from torchtext.legacy.data import Field, BucketIterator
 from torchtext.legacy.datasets.translation import Multi30k
 from torch.utils.tensorboard import SummaryWriter
 
-from conf import *
-from lib import Transformer
-from bleu import idx_to_word, get_bleu
+from tconf import *
+from transformer import Transformer
+from bleuscore import idx_to_word, get_bleu
+# %%
+# Conditional construct depending on where the kernel is run.
+loc = os.environ.get('KAGGLE_KERNEL_RUN_TYPE','Localhost')
+if loc == 'Interactive' or loc == 'Localhost':
+    conf = {
+        'epochs': 2,
+        'save': True
+    }
+# When it is run after an api push.
+elif loc == 'Batch':
+    conf = {
+        'epochs': 100,
+        'save': False
+    }
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # %%
 class DataLoader:
     source: Field = None
@@ -214,7 +235,8 @@ def run(total_epoch, best_loss):
 
         if valid_loss < best_loss:
             best_loss = valid_loss
-            torch.save(model.state_dict(), 'results/model-{0}.pt'.format(valid_loss))
+            if conf['save']:
+                torch.save(model.state_dict(), 'results/model-{0}.pt'.format(valid_loss))
 
         f = open('results/train_loss.txt', 'w')
         f.write(str(train_losses))
@@ -240,5 +262,5 @@ def run(total_epoch, best_loss):
             tb.add_histogram(f'{name}.grad',weight.grad, epoch)
     tb.close()
 # %%
-run(100, inf)
+run(conf['epochs'], inf)
 # %%

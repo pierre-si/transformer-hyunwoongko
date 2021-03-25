@@ -132,3 +132,9 @@ dmypy.json
 
 # Tensorboard
 runs/
+
+# data
+.data/
+
+# output from kaggle
+output/
