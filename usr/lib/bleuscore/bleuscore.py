@@ -3,6 +3,7 @@
 @when : 2019-12-22
 @homepage : https://github.com/gusdnd852
 """
+
 import math
 from collections import Counter
 
